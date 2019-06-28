@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+    id 'scala'
+}
+
+group 'org.blackhole.ep'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+
+    implementation 'org.scala-lang:scala-library:2.12.8'
+
+    // https://mvnrepository.com/artifact/com.typesafe.akka/akka-stream
+    compile group: 'com.typesafe.akka', name: 'akka-stream_2.12', version: '2.5.23'
+    compile group: 'com.typesafe.akka', name: 'akka-http_2.12', version: '10.1.8'
+    compile group: 'com.typesafe.akka', name: 'akka-actor_2.12', version: '2.5.23'
+    compile group: 'com.typesafe.akka', name: 'akka-slf4j_2.12', version: '2.5.23'
+
+
+
+    // testCompile
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    testCompile group: 'org.scalatest', name: 'scalatest_2.12', version: '3.0.2'
+
+
+}
