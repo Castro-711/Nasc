@@ -77,7 +77,8 @@ void setupFastLEDs() {
 void setupRTCTime() {
   rtc.begin(); // init RTC
 
-  rtc.setClock(__TIME__, __DATE__);
+  rtc.setTime(__TIME__);
+  rtc.setDate(__DATE__);
   
   Serial.print("Unixtime: ");
   Serial.println(rtc.unixtime());
@@ -124,7 +125,7 @@ int numdigits(int i){
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = {  
+SimplePatternList eveningPatterns = {  
   bluePurpSinelon, 
   whiteAquaPinkSinelon, 
   eireSinelon, 
@@ -149,7 +150,7 @@ SimplePatternList gPatterns = {
   lighteningStrip 
 }; // irelandFlagSinelon, fillFadeIn, pulseSinelon
 
-SimplePatternList xyPatterns = {  
+SimplePatternList dayPatterns = {  
   lighteningBoltsInc, 
   lighteningBoltsDec, 
   lighteningStrip,
@@ -157,10 +158,10 @@ SimplePatternList xyPatterns = {
   whiteAquaPinkSinelon
 }; // irelandFlagSinelon, fillFadeIn, pulseSinelon
 
-//SimplePatternList gPatterns = { myRainbow, myRainbow, myRainbow, bpmLava, bpmHeat, bpmCloud, bpmForrest, bpmOcean, confettiGreenAndWhite, pinkAndWhite, dualSolid, rainbow, rainbowWithGlitter, confetti, sinelon, sinelon2, bpm, confettiGreenAndWhite, dualSolid, pinkAndWhite }; // taking Glitter & juggle out
+//SimplePatternList eveningPatterns = { myRainbow, myRainbow, myRainbow, bpmLava, bpmHeat, bpmCloud, bpmForrest, bpmOcean, confettiGreenAndWhite, pinkAndWhite, dualSolid, rainbow, rainbowWithGlitter, confetti, sinelon, sinelon2, bpm, confettiGreenAndWhite, dualSolid, pinkAndWhite }; // taking Glitter & juggle out
 
-uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
-uint8_t xyCurrentPatternNumber = 0;
+uint8_t currentEveningPatternNumber = 0; // Index number of which pattern is current
+uint8_t currentDayPatternNumber = 0;
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 uint8_t rHue = 0;
 
@@ -195,17 +196,24 @@ uint8_t pinkV = 224;
   
 void loop() {
   Serial.print(rtc.getMinutes());
-  if ( rtc.getMinutes() % 5 == 0 ) {
-    newLoop();
+  if ( rtc.getMinutes() <= 45 && rtc.getMinutes() >= 55 ) {
+    dayLoop();
   }
-  else if ( rtc.getMinutes() % 2 == 0 ) {
-    originalLoop();
+  else if ( rtc.getMinutes >= 45 && rtc.getMinutes() <= 50 ) {
+    eveningLoop();
+  }
+  else {
+    fadeToBlackBy(leds1, NUM_LEDS, 255);
+    fadeToBlackBy(leds2, NUM_LEDS, 255);
+    fadeToBlackBy(leds3, NUM_LEDS, 255);
+    fadeToBlackBy(leds4, NUM_LEDS, 255);
+    fadeToBlackBy(leds5, NUM_LEDS, 255);
   }
 }
 
-void originalLoop() {
+void eveningLoop() {
    // Call the current pattern function once, updating the 'leds' array
-  gPatterns[gCurrentPatternNumber]();
+  eveningPatterns[currentEveningPatternNumber]();
 
   // send the 'leds' array out to the actual LED strip
   FastLED.show();  
@@ -216,12 +224,12 @@ void originalLoop() {
   EVERY_N_MILLISECONDS( 20 ) { 
     gHue++; 
   } // slowly cycle the "base color" through the rainbow
-  EVERY_N_SECONDS( 24 ) { nextPattern(); } // change patterns periodically
+  EVERY_N_SECONDS( 24 ) { nextEveningPattern(); } // change patterns periodically
 }
 
 // only difference here is that it is faster
-void newLoop() {
-    xyPatterns[xyCurrentPatternNumber]();
+void dayLoop() {
+    dayPatterns[currentDayPatternNumber]();
 
   // send the 'leds' array out to the actual LED strip
   FastLED.show();  
@@ -233,18 +241,18 @@ void newLoop() {
     gHue++; 
   } // slowly cycle the "base color" through the rainbow
   EVERY_N_SECONDS( 2 ) // make this a variable & give it a range to increase the randomness
-  { xyNextPattern(); } // change patterns periodically 
+  { nextDayPattern(); } // change patterns periodically 
 }
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
-void nextPattern()
+void nextEveningPattern()
 {
   // add one to the current pattern number, and wrap around at the end
-  gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE( gPatterns);
+  currentEveningPatternNumber = (currentEveningPatternNumber + 1) % ARRAY_SIZE( eveningPatterns );
 }
 
-void xyNextPattern() {
-  xyCurrentPatternNumber = (xyCurrentPatternNumber + 1) % ARRAY_SIZE( xyPatterns );
+void nextDayPattern() {
+  currentDayPatternNumber = (currentDayPatternNumber + 1) % ARRAY_SIZE( dayPatterns );
 }
 
 void rainbowT2() {
