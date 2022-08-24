@@ -1,5 +1,5 @@
 #include <FastLED.h>
-#include <RTC.h>
+#include <RTCDue.h>
 
 FASTLED_USING_NAMESPACE
 
@@ -38,14 +38,21 @@ CRGB leds5[NUM_LEDS];
 #define BRIGHTNESS         255
 #define FRAMES_PER_SECOND  60
 
-static DS1307 RTC;
+// RTC variables
+RTCDue rtc(XTAL);
+const char* daynames[]={"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 
 void setup() {
-
   Serial.begin(9600);
   
   delay(3000); // 3 second delay for recovery
-  
+
+  setupRTCTime();
+
+  setupFastLEDs();
+}
+
+void setupFastLEDs() {
   // tell FastLED about the LED strip configuration
   FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds1, NUM_LEDS).setCorrection(TypicalLEDStrip);
 
@@ -65,6 +72,53 @@ void setup() {
 
   // set master brightness control
   FastLED.setBrightness(BRIGHTNESS);
+}
+
+void setupRTCTime() {
+  rtc.begin(); // init RTC
+
+  rtc.setClock(__TIME__, __DATE__);
+  
+  Serial.print("Unixtime: ");
+  Serial.println(rtc.unixtime());
+
+  // Print time...
+  Serial.println("And in plain for everyone");
+  Serial.print("Time: ");
+  digitprint(rtc.getHours(), 2);
+  Serial.print(":");
+  digitprint(rtc.getMinutes(), 2);
+  Serial.print(":");
+  digitprint(rtc.getSeconds(), 2);
+  Serial.println("");
+
+  // Print date...
+  Serial.print("Date: ");
+  Serial.print(daynames[rtc.getDayofWeek()]);
+  Serial.print(" ");
+  digitprint(rtc.getDay(), 2);
+  Serial.print(".");
+  digitprint(rtc.getMonth(), 2);
+  Serial.print(".");
+  Serial.println(rtc.getYear());
+  Serial.println("");
+}
+
+/********* RTC helper methods from https://github.com/MarkusLange/RTCDue/blob/master/examples/RTCDue_Unixtime_Compilertime/RTCDue_Unixtime_Compilertime.ino **********/
+void digitprint(int value, int lenght){
+  for (int i = 0; i < (lenght - numdigits(value)); i++){
+    Serial.print("0");
+  }
+  Serial.print(value);
+}
+
+int numdigits(int i){
+  int digits;
+  if (i < 10)
+    digits = 1;
+  else
+    digits = (int)(log10((double)i)) + 1;
+  return digits;
 }
 
 
@@ -93,11 +147,20 @@ SimplePatternList gPatterns = {
   lighteningBoltsInc, 
   lighteningBoltsDec, 
   lighteningStrip 
-  }; // irelandFlagSinelon, fillFadeIn, pulseSinelon
+}; // irelandFlagSinelon, fillFadeIn, pulseSinelon
+
+SimplePatternList xyPatterns = {  
+  lighteningBoltsInc, 
+  lighteningBoltsDec, 
+  lighteningStrip,
+  bluePurpSinelon, 
+  whiteAquaPinkSinelon
+}; // irelandFlagSinelon, fillFadeIn, pulseSinelon
 
 //SimplePatternList gPatterns = { myRainbow, myRainbow, myRainbow, bpmLava, bpmHeat, bpmCloud, bpmForrest, bpmOcean, confettiGreenAndWhite, pinkAndWhite, dualSolid, rainbow, rainbowWithGlitter, confetti, sinelon, sinelon2, bpm, confettiGreenAndWhite, dualSolid, pinkAndWhite }; // taking Glitter & juggle out
 
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
+uint8_t xyCurrentPatternNumber = 0;
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 uint8_t rHue = 0;
 
@@ -131,14 +194,13 @@ uint8_t pinkV = 224;
 
   
 void loop() {
-  if (RTC.getMinutes() % 4 == 0) {
-    originalLoop();
-  }
-  else if ( RTC.getMinutes() % 2 == 0 ) {
+  Serial.print(rtc.getMinutes());
+  if ( rtc.getMinutes() % 5 == 0 ) {
     newLoop();
   }
-  
-  
+  else if ( rtc.getMinutes() % 2 == 0 ) {
+    originalLoop();
+  }
 }
 
 void originalLoop() {
@@ -159,7 +221,7 @@ void originalLoop() {
 
 // only difference here is that it is faster
 void newLoop() {
-    gPatterns[gCurrentPatternNumber]();
+    xyPatterns[xyCurrentPatternNumber]();
 
   // send the 'leds' array out to the actual LED strip
   FastLED.show();  
@@ -167,19 +229,22 @@ void newLoop() {
   FastLED.delay(1000/FRAMES_PER_SECOND); 
 
   // do some periodic updates
-  EVERY_N_MILLISECONDS( 20 ) { 
+  EVERY_N_MILLISECONDS( 5 ) { 
     gHue++; 
   } // slowly cycle the "base color" through the rainbow
   EVERY_N_SECONDS( 2 ) // make this a variable & give it a range to increase the randomness
-  { nextPattern(); } // change patterns periodically 
+  { xyNextPattern(); } // change patterns periodically 
 }
-
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
 void nextPattern()
 {
   // add one to the current pattern number, and wrap around at the end
   gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE( gPatterns);
+}
+
+void xyNextPattern() {
+  xyCurrentPatternNumber = (xyCurrentPatternNumber + 1) % ARRAY_SIZE( xyPatterns );
 }
 
 void rainbowT2() {
