@@ -43,7 +43,8 @@ RTCDue rtc(XTAL);
 const char* daynames[]={"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
+  Serial.print("HelloNasc!");
   
   delay(3000); // 3 second delay for recovery
 
@@ -126,36 +127,13 @@ int numdigits(int i){
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
 SimplePatternList eveningPatterns = {  
-  bluePurpSinelon, 
-  whiteAquaPinkSinelon, 
-  eireSinelon, 
-  pulseSinelon, 
-  bpmOcean, 
-  bpmForrest, 
-  bpmCloud, 
-  bpm2, 
-  bpm, 
-  sinelon2, 
-  sinelon, 
-  reggaeSinelon, 
-  funknebulaFullSinelone, 
-  reggaeFullSinelone, 
-  fillFadeIn, 
-  irelandFlagSinelon, 
-  reggaeConfetti, 
-  confetti, 
-  rainbow, 
-  lighteningBoltsInc, 
-  lighteningBoltsDec, 
-  lighteningStrip 
+  bluePurpSinelon
 }; // irelandFlagSinelon, fillFadeIn, pulseSinelon
 
 SimplePatternList dayPatterns = {  
   lighteningBoltsInc, 
   lighteningBoltsDec, 
-  lighteningStrip,
-  bluePurpSinelon, 
-  whiteAquaPinkSinelon
+  lighteningStrip
 }; // irelandFlagSinelon, fillFadeIn, pulseSinelon
 
 //SimplePatternList eveningPatterns = { myRainbow, myRainbow, myRainbow, bpmLava, bpmHeat, bpmCloud, bpmForrest, bpmOcean, confettiGreenAndWhite, pinkAndWhite, dualSolid, rainbow, rainbowWithGlitter, confetti, sinelon, sinelon2, bpm, confettiGreenAndWhite, dualSolid, pinkAndWhite }; // taking Glitter & juggle out
@@ -195,14 +173,16 @@ uint8_t pinkV = 224;
 
   
 void loop() {
-  Serial.print(rtc.getMinutes());
-  if ( rtc.getMinutes() <= 45 && rtc.getMinutes() >= 55 ) {
+  if ( rtc.getMinutes() <= 15 && rtc.getMinutes() >= 12 ) {
     dayLoop();
+    Serial.println("Day Loop");
   }
-  else if ( rtc.getMinutes >= 45 && rtc.getMinutes() <= 50 ) {
+  else if ( rtc.getMinutes() >= 16 && rtc.getMinutes() <= 18 ) {
     eveningLoop();
+    Serial.println("Evening Loop");
   }
   else {
+    Serial.print("Fading to black");
     fadeToBlackBy(leds1, NUM_LEDS, 255);
     fadeToBlackBy(leds2, NUM_LEDS, 255);
     fadeToBlackBy(leds3, NUM_LEDS, 255);
