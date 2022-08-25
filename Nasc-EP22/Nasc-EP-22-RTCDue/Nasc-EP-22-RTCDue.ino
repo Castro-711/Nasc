@@ -12,6 +12,16 @@ FASTLED_USING_NAMESPACE
 //
 // -Mark Kriegsman, December 2014
 
+/**
+ * Todo:
+ * 1. Expand on fillFadeIn - create some concrete versions with fave colours & keep the random one
+ * 2. Create pattern better than sinelon using a for loop & maybe CRGBSet -> https://github.com/FastLED/FastLED/wiki/RGBSet-Reference
+ *    2a. Use the fadeToBlackBy over the next few pixels, each one getting closer to off to help create the trail
+ * 3. Nail down the day pattern with trails - concrete colours & random colours
+ * 4. Expand on lightening patterns - more concrete colours & some random colours
+ * 5. Figure out how to fade out lights completly
+ */
+
 #if defined(FASTLED_VERSION) && (FASTLED_VERSION < 3001000)
 #warning "Requires FastLED 3.1 or later; check github for latest code."
 #endif
@@ -25,9 +35,9 @@ FASTLED_USING_NAMESPACE
 #define LED_TYPE    WS2812B
 #define COLOR_ORDER GRB
 #define NUM_LEDS    300
-#define SECTIONS    3
-#define SEC_LEN     NUM_LEDS / SECTIONS
+#define MINI_LEDS   60 // mini strip
 #define HUE_OFFSET  4
+#define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
 CRGB leds1[NUM_LEDS]; // led array
 CRGB leds2[NUM_LEDS];
@@ -42,6 +52,19 @@ CRGB leds5[NUM_LEDS];
 RTCDue rtc(XTAL);
 const char* daynames[]={"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 
+// an array of html colours
+const CRGB htmlColours[]={
+                   CRGB::Aquamarine, CRGB::Fuchsia, CRGB::PaleGreen, CRGB::SeaGreen, CRGB::Turquoise,
+                   CRGB::Tomato, CRGB::WhiteSmoke, CRGB::YellowGreen, CRGB::Plum, CRGB::Silver, 
+                   CRGB::LightCoral, CRGB::LightPink, CRGB::HotPink, CRGB::Blue, CRGB::Cyan, 
+                   CRGB::DeepSkyBlue, CRGB::SpringGreen, CRGB::MediumSpringGreen, CRGB::Lime,
+                   CRGB::MediumSlateBlue, CRGB::Purple, CRGB::DarkOrchid, CRGB::BlueViolet,
+                   CRGB::Magenta, CRGB::Yellow, CRGB::Khaki, CRGB::Orange, CRGB::DeepPink,
+                   CRGB::Red, CRGB::FireBrick, CRGB::Gold
+};
+
+int htmlColourSize = ARRAY_SIZE(htmlColours);
+
 void setup() {
   Serial.begin(115200);
   Serial.print("HelloNasc!");
@@ -51,28 +74,26 @@ void setup() {
   setupRTCTime();
 
   setupFastLEDs();
+
+  Serial.println("FASTLED.size: ");
+  Serial.print(FastLED.size());
+  Serial.println("FASTLED.brightness: ");
+  Serial.print(FastLED.getBrightness());
 }
 
 void setupFastLEDs() {
   // tell FastLED about the LED strip configuration
-  FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds1, NUM_LEDS).setCorrection(TypicalLEDStrip);
-
-  FastLED.addLeds<LED_TYPE,DATA_PIN_2,COLOR_ORDER>(leds2, NUM_LEDS).setCorrection(TypicalLEDStrip);
-
+  FastLED.addLeds<LED_TYPE,DATA_PIN, COLOR_ORDER>(leds1, NUM_LEDS).setCorrection(TypicalLEDStrip);
+  FastLED.addLeds<LED_TYPE,DATA_PIN_2, COLOR_ORDER>(leds2, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.addLeds<LED_TYPE,DATA_PIN_3, COLOR_ORDER>(leds3, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  
   FastLED.addLeds<LED_TYPE,DATA_PIN_4,COLOR_ORDER>(leds4, NUM_LEDS).setCorrection(TypicalLEDStrip);
-
   FastLED.addLeds<LED_TYPE,DATA_PIN_5, COLOR_ORDER>(leds5, NUM_LEDS).setCorrection(TypicalLEDStrip);
 
-  fadeToBlackBy(leds1, NUM_LEDS, 255);
-  fadeToBlackBy(leds2, NUM_LEDS, 255);
-  fadeToBlackBy(leds3, NUM_LEDS, 255);
-  fadeToBlackBy(leds4, NUM_LEDS, 255);
-  fadeToBlackBy(leds5, NUM_LEDS, 255);
+  fadeAllStripsToBlack();
 
   // set master brightness control
   FastLED.setBrightness(BRIGHTNESS);
+  FastLED.setTemperature(CoolWhiteFluorescent);
 }
 
 void setupRTCTime() {
@@ -127,13 +148,12 @@ int numdigits(int i){
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
 SimplePatternList eveningPatterns = {  
-  bluePurpSinelon
+  bluePurpSinelon,
+  sinelonEP22
 }; // irelandFlagSinelon, fillFadeIn, pulseSinelon
 
 SimplePatternList dayPatterns = {  
-  lighteningBoltsInc, 
-  lighteningBoltsDec, 
-  lighteningStrip
+  fillFadeIn
 }; // irelandFlagSinelon, fillFadeIn, pulseSinelon
 
 //SimplePatternList eveningPatterns = { myRainbow, myRainbow, myRainbow, bpmLava, bpmHeat, bpmCloud, bpmForrest, bpmOcean, confettiGreenAndWhite, pinkAndWhite, dualSolid, rainbow, rainbowWithGlitter, confetti, sinelon, sinelon2, bpm, confettiGreenAndWhite, dualSolid, pinkAndWhite }; // taking Glitter & juggle out
@@ -172,22 +192,22 @@ uint8_t purpV = 192;
 uint8_t pinkV = 224;
 
   
-void loop() {
-  if ( rtc.getMinutes() <= 15 && rtc.getMinutes() >= 12 ) {
+void loop() { 
+  /*  there seems to be a 24 second delay between minutes. Switching between day & night.
+      13:16:24.006 -> Day Loop
+      13:16:24.115 -> Evening Loop
+  */
+  if ( rtc.getMinutes() >= 16 && rtc.getMinutes() <= 19 ) {
     dayLoop();
     Serial.println("Day Loop");
   }
-  else if ( rtc.getMinutes() >= 16 && rtc.getMinutes() <= 18 ) {
+  else if ( rtc.getMinutes() > 20 && rtc.getMinutes() <= 23 ) {
     eveningLoop();
     Serial.println("Evening Loop");
   }
   else {
-    Serial.print("Fading to black");
-    fadeToBlackBy(leds1, NUM_LEDS, 255);
-    fadeToBlackBy(leds2, NUM_LEDS, 255);
-    fadeToBlackBy(leds3, NUM_LEDS, 255);
-    fadeToBlackBy(leds4, NUM_LEDS, 255);
-    fadeToBlackBy(leds5, NUM_LEDS, 255);
+    Serial.println("Fading to black");
+    fadeAllStripsToBlack();
   }
 }
 
@@ -223,7 +243,7 @@ void dayLoop() {
   EVERY_N_SECONDS( 2 ) // make this a variable & give it a range to increase the randomness
   { nextDayPattern(); } // change patterns periodically 
 }
-#define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
+
 
 void nextEveningPattern()
 {
@@ -241,7 +261,7 @@ void rainbowT2() {
   uint16_t pos = beatsin88( 1792, 0, NUM_LEDS );  // 7 * 256 = 1792
   uint16_t cub = cubicwave8( 1792 );
   leds1[pos] += CHSV( rHue += HUE_OFFSET, 255, 255 );
-  leds2[cub] += CHSV( rHue += HUE_OFFSET, 255, 255);
+  leds2[cub] += CHSV( rHue += HUE_OFFSET, 255, 255 );
   FastLED.show();
 }
 
@@ -263,6 +283,19 @@ uint8_t colourArray[5];
 
 uint8_t decCounter = 0;
 
+void lighteningStripCustom(CRGB one, CRGB two, CRGB three, CRGB four)
+{
+  Serial.println("lighteningStripCustom");
+  fadeToBlackBy( leds1, NUM_LEDS, 20);
+  // fade_video (CRGB *leds, uint16_t num_leds, uint8_t fadeBy)
+  fill_solid(leds1, NUM_LEDS, one);
+  fill_solid(leds2, NUM_LEDS, two);
+  fill_solid(leds3, NUM_LEDS, three);
+  fill_solid(leds4, NUM_LEDS, four);
+  uint8_t randomColour = rand() % htmlColourSize;
+  fill_solid(leds5, NUM_LEDS, htmlColours[randomColour]);
+}
+
 void lighteningStrip()
 {
   fadeToBlackBy( leds1, NUM_LEDS, 20);
@@ -274,7 +307,7 @@ void lighteningStrip()
   fill_solid(leds5, NUM_LEDS, CHSV(aquaV, 255, 255));
 }
 
-uint8_t blendOffset = 100;
+uint8_t blendOffset = 17;
 
 void blendStrips()
 {
@@ -282,7 +315,12 @@ void blendStrips()
 
   // seems very static
 //  CRGB   blend (const CRGB &p1, const CRGB &p2, fract8 amountOfP2)
-  fill_solid(leds1, NUM_LEDS, blend(greenC, whiteC, 1 / blendOffset--));
+  fill_solid(leds1, NUM_LEDS, greenC);
+  blend(greenC, whiteC, 1 / blendOffset--);
+  fill_solid(leds2, NUM_LEDS, whiteC);
+  blend(whiteC, orangeC, 1 / blendOffset--);
+  fill_solid(leds3, NUM_LEDS, orangeC);
+  blend(orangeC, greenC, 1 / blendOffset--);
 }
 
 void lighteningBoltsDec() {
@@ -415,11 +453,8 @@ void addGlitter( fract8 chanceOfGlitter)
 void confetti() 
 {
   // random colored speckles that blink in and fade smoothly
-  fadeToBlackBy( leds1, NUM_LEDS, 10);
-  fadeToBlackBy( leds2, NUM_LEDS, 10);
-  fadeToBlackBy( leds3, NUM_LEDS, 10);
-  fadeToBlackBy( leds4, NUM_LEDS, 10);
-  fadeToBlackBy( leds5, NUM_LEDS, 10);
+  fadeAllStripsToBlack();
+  
   int pos1 = random16(NUM_LEDS);
   int pos2 = random16(NUM_LEDS);
   int pos3 = random16(NUM_LEDS);
@@ -435,11 +470,8 @@ void confetti()
 void myConfetti() 
 {
   // random colored speckles that blink in and fade smoothly
-  fadeToBlackBy( leds1, NUM_LEDS, 10);
-  fadeToBlackBy( leds2, NUM_LEDS, 10);
-  fadeToBlackBy( leds3, NUM_LEDS, 10);
-  fadeToBlackBy( leds4, NUM_LEDS, 10);
-  fadeToBlackBy( leds5, NUM_LEDS, 10);
+  fadeAllStripsToBlack();
+  
   int pos1 = random16(NUM_LEDS);
   int pos2 = random16(NUM_LEDS);
   int pos3 = random16(NUM_LEDS);
@@ -455,11 +487,8 @@ void myConfetti()
 
 void reggaeConfetti()
 {
-  fadeToBlackBy( leds1, NUM_LEDS, 10);
-  fadeToBlackBy( leds2, NUM_LEDS, 10);
-  fadeToBlackBy( leds3, NUM_LEDS, 10);
-  fadeToBlackBy( leds4, NUM_LEDS, 10);
-  fadeToBlackBy( leds5, NUM_LEDS, 10);
+  fadeAllStripsToBlack();
+  
   uint8_t red = random16(NUM_LEDS);
   uint8_t yellow = random16(NUM_LEDS);
   uint8_t green = random16(NUM_LEDS);
@@ -486,12 +515,7 @@ void reggaeConfetti()
 
 void reggaeSingleSinelon()
 {
-  fadeToBlackBy( leds1, NUM_LEDS, 20);
-  fadeToBlackBy( leds2, NUM_LEDS, 20);
-  fadeToBlackBy( leds3, NUM_LEDS, 20);
-  fadeToBlackBy( leds4, NUM_LEDS, 20);
-  fadeToBlackBy( leds5, NUM_LEDS, 20);
-
+   fadeAllStripsToBlack();
 
    leds1[top] += CHSV( 0, 255, 255);
    leds1[mid] += CHSV( 96, 255, 255);
@@ -517,11 +541,7 @@ void reggaeSingleSinelon()
 
 void reggaeSinelon()
 {
-  fadeToBlackBy( leds1, NUM_LEDS, 20);
-  fadeToBlackBy( leds2, NUM_LEDS, 20);
-  fadeToBlackBy( leds3, NUM_LEDS, 20);
-  fadeToBlackBy( leds4, NUM_LEDS, 20);
-  fadeToBlackBy( leds5, NUM_LEDS, 20);
+  fadeAllStripsToBlack();
 
   uint8_t reggaeRed = random8(0, 16);
   uint8_t reggaeYellow = random8(64, 80);
@@ -550,11 +570,7 @@ void reggaeSinelon()
 
 void irelandFlagSinelon()
 {
-  fadeToBlackBy( leds1, NUM_LEDS, 20);
-  fadeToBlackBy( leds2, NUM_LEDS, 20);
-  fadeToBlackBy( leds3, NUM_LEDS, 20);
-  fadeToBlackBy( leds4, NUM_LEDS, 20);
-  fadeToBlackBy( leds5, NUM_LEDS, 20);
+   fadeAllStripsToBlack();
 
    leds1[top] += greenC;
    leds1[t2b] += whiteC;
@@ -581,33 +597,48 @@ void irelandFlagSinelon()
 // aqua + purple
 void fillFadeIn() 
 {
-  fadeToBlackBy( leds1, NUM_LEDS, 20 );
-  fadeToBlackBy( leds2, NUM_LEDS, 20 );
-  fadeToBlackBy( leds3, NUM_LEDS, 20 );
-  fadeToBlackBy( leds4, NUM_LEDS, 20 );
-  fadeToBlackBy( leds5, NUM_LEDS, 20 );
+  fadeAllStripsToBlack();
+  Serial.println("FillFadeIn");
+  uint8_t randOne = rand() % 255;
+  uint8_t randTwo = rand() % 255;
+  uint8_t randThree = rand() % 255;
+  uint8_t randFour = rand() % 255;
+  uint8_t randFive = rand() % 255;
 
-  fill_solid(leds1, NUM_LEDS, CHSV(128, 255, random8(90, 255)));
-  fill_solid(leds2, NUM_LEDS, CHSV(192, 255, random8(90, 255)));
-  fill_solid(leds3, NUM_LEDS, CHSV(128, 255, random8(90, 255)));
-  fill_solid(leds4, NUM_LEDS, CHSV(192, 255, random8(90, 255)));
-  fill_solid(leds5, NUM_LEDS, CHSV(128, 255, random8(90, 255)));
+  fill_solid(leds1, NUM_LEDS, CHSV(randOne, 255, random8(90, 255)));
+  fill_solid(leds2, NUM_LEDS, CHSV(randTwo, 255, random8(90, 255)));
+  fill_solid(leds3, NUM_LEDS, CHSV(randThree, 255, random8(90, 255)));
+  fill_solid(leds4, NUM_LEDS, CHSV(randFour, 255, random8(90, 255)));
+  fill_solid(leds5, NUM_LEDS, CHSV(randFive, 255, random8(90, 255)));
+}
+
+void sinelonEP22() {
+
+  Serial.println("sinelonEP22");
+  
+  for(uint8_t i = 0; i < htmlColourSize / 3; i++) {
+    fadeAllStripsToBlack();
+    uint8_t randomColour = rand() % htmlColourSize;
+    uint8_t sPos = beatsin16( 3, 0, NUM_LEDS );
+    uint8_t qPos = quadwave8( 17 );
+    leds1[sPos] += htmlColours[randomColour];
+    leds2[qPos] += htmlColours[randomColour];
+    leds3[sPos] += htmlColours[randomColour];
+    leds4[qPos] += htmlColours[randomColour];
+    leds5[sPos] += htmlColours[randomColour];
+  }
 }
 
 // now a pulsating sinelon
 void pulseSinelon()
 {
-  fadeToBlackBy( leds1, NUM_LEDS, 20);
-  fadeToBlackBy( leds2, NUM_LEDS, 20);
-  fadeToBlackBy( leds3, NUM_LEDS, 20);
-  fadeToBlackBy( leds4, NUM_LEDS, 20);
-  fadeToBlackBy( leds5, NUM_LEDS, 20);
+  fadeAllStripsToBlack();
   
-  uint16_t one_ = beatsin16(3, 0, NUM_LEDS);
-  uint16_t two_ = beatsin16(3, 0, NUM_LEDS);
-  uint16_t three_ = beatsin16(3, 0, NUM_LEDS);
-  uint16_t four_ = beatsin16(3, 0, NUM_LEDS);
-  uint16_t five_ = beatsin16(3, 0, NUM_LEDS);
+  uint16_t one_ = beatsin16( 3, 0, NUM_LEDS );
+  uint16_t two_ = beatsin16( 3, 0, NUM_LEDS );
+  uint16_t three_ = beatsin16( 3, 0, NUM_LEDS );
+  uint16_t four_ = beatsin16( 3, 0, NUM_LEDS );
+  uint16_t five_ = beatsin16( 3, 0, NUM_LEDS );
 
   leds1[one_] += CHSV(192, 255, random8(90,255));
   leds2[two_] += CHSV(128, 255, random8(90,255));
@@ -623,12 +654,7 @@ uint8_t green = 96;
 // messing with bpm can give a confetti effect
 void reggaeFullSinelone()
 {
-  fadeToBlackBy( leds1, NUM_LEDS, 20);
-  fadeToBlackBy( leds2, NUM_LEDS, 20);
-  fadeToBlackBy( leds3, NUM_LEDS, 20);
-  fadeToBlackBy( leds4, NUM_LEDS, 20);
-  fadeToBlackBy( leds5, NUM_LEDS, 20);
-  
+  fadeAllStripsToBlack();
   
   int pos = beatsin16(13, 0, NUM_LEDS);
   int pos_ = beatsin16(7, 0, NUM_LEDS);
@@ -674,11 +700,7 @@ void reggaeFullSinelone()
 
 void funknebulaFullSinelone()
 {
-  fadeToBlackBy( leds1, NUM_LEDS, 20);
-  fadeToBlackBy( leds2, NUM_LEDS, 20);
-  fadeToBlackBy( leds3, NUM_LEDS, 20);
-  fadeToBlackBy( leds4, NUM_LEDS, 20);
-  fadeToBlackBy( leds5, NUM_LEDS, 20);
+  fadeAllStripsToBlack();
   
   int pos = beatsin16(13, 0, NUM_LEDS);
   int pos_ = beatsin16(7, 0, NUM_LEDS);
@@ -712,11 +734,7 @@ void funknebulaFullSinelone()
 void sinelon()
 {
   // a colored dot sweeping back and forth, with fading trails
-  fadeToBlackBy( leds1, NUM_LEDS, 20);
-  fadeToBlackBy( leds2, NUM_LEDS, 20);
-  fadeToBlackBy( leds3, NUM_LEDS, 20);
-  fadeToBlackBy( leds4, NUM_LEDS, 20);
-  fadeToBlackBy( leds5, NUM_LEDS, 20);
+  fadeAllStripsToBlack();
   
   int posE = beatsin16( 7, 0, NUM_LEDS-1 );
   int posD = beatsin16( 4, 0, NUM_LEDS-1 );
@@ -730,12 +748,7 @@ void sinelon()
 
 void whiteAquaPinkSinelon()
 {
-    // a colored dot sweeping back and forth, with fading trails
-  fadeToBlackBy( leds1, NUM_LEDS, 20);
-  fadeToBlackBy( leds2, NUM_LEDS, 20);
-  fadeToBlackBy( leds3, NUM_LEDS, 20);
-  fadeToBlackBy( leds4, NUM_LEDS, 20);
-  fadeToBlackBy( leds5, NUM_LEDS, 20);
+  fadeAllStripsToBlack();
   
   int posE = beatsin16( 7, 0, NUM_LEDS-1 );
   int posD = beatsin16( 4, 0, NUM_LEDS-1 );
@@ -748,33 +761,34 @@ void whiteAquaPinkSinelon()
   leds5[posR] += CRGB( 255, 255, 255);
 }
 
+void fadeAllStripsToBlack() {
+  fadeToBlackBy( leds1, NUM_LEDS, 255 );
+  fadeToBlackBy( leds2, NUM_LEDS, 255 );
+  fadeToBlackBy( leds3, NUM_LEDS, 255 );
+  fadeToBlackBy( leds4, NUM_LEDS, 255 );
+  fadeToBlackBy( leds5, NUM_LEDS, 255 );
+}
+
 void bluePurpSinelon()
 {
+  Serial.println("bluePurpSinelon");
     // a colored dot sweeping back and forth, with fading trails
-  fadeToBlackBy( leds1, NUM_LEDS, 20);
-  fadeToBlackBy( leds2, NUM_LEDS, 20);
-  fadeToBlackBy( leds3, NUM_LEDS, 20);
-  fadeToBlackBy( leds4, NUM_LEDS, 20);
-  fadeToBlackBy( leds5, NUM_LEDS, 20);
+  fadeAllStripsToBlack();
   
-  int posE = beatsin16( 7, 0, NUM_LEDS-1 );
-  int posD = beatsin16( 4, 0, NUM_LEDS-1 );
-  int posR = beatsin16( 17, 0, NUM_LEDS-1 );
+  int posE = beatsin16( 3, 0, NUM_LEDS );
+  int posD = beatsin16( 4, 0, NUM_LEDS );
+  int posR = beatsin16( 5, 0, NUM_LEDS );
   
-  leds1[posR] += CRGB( 255, 255, 255);
+  leds1[posR] += CRGB::Snow;
   leds2[posE] += CHSV( blueV, 255, 255);
   leds3[posD] += CHSV( purpV, 255, 255);
   leds4[posE] += CHSV( aquaV, 255, 255);
-  leds5[posR] += CRGB( 255, 255, 255);
+  leds5[posR] += CRGB::Snow;
 }
 void eireSinelon()
 {
     // a colored dot sweeping back and forth, with fading trails
-  fadeToBlackBy( leds1, NUM_LEDS, 20);
-  fadeToBlackBy( leds2, NUM_LEDS, 20);
-  fadeToBlackBy( leds3, NUM_LEDS, 20);
-  fadeToBlackBy( leds4, NUM_LEDS, 20);
-  fadeToBlackBy( leds5, NUM_LEDS, 20);
+  fadeAllStripsToBlack();
   
   int posE = beatsin16( 7, 0, NUM_LEDS-1 );
   int posD = beatsin16( 4, 0, NUM_LEDS-1 );
@@ -790,12 +804,7 @@ void eireSinelon()
 
 void sinelon2()
 {
-  // a colored dot sweeping back and forth, with fading trails
-  fadeToBlackBy( leds1, NUM_LEDS, 20);
-  fadeToBlackBy( leds2, NUM_LEDS, 20);
-  fadeToBlackBy( leds3, NUM_LEDS, 20);
-  fadeToBlackBy( leds4, NUM_LEDS, 20);
-  fadeToBlackBy( leds5, NUM_LEDS, 20);
+  fadeAllStripsToBlack();
   
   int posE = beatsin16( 20, 0, NUM_LEDS-1 );
   int posD = beatsin16( 7, 0, NUM_LEDS-1 );
@@ -813,7 +822,7 @@ void bpm()
   uint8_t BeatsPerMinute = 62;
   CRGBPalette16 palette = PartyColors_p;
   uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
-  for( int i = 0; i < NUM_LEDS; i++) { //9948
+  for( uint8_t i = 0; i < NUM_LEDS; i++) { //9948
     leds1[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
     leds2[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
     leds3[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
