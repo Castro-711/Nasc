@@ -1,6 +1,9 @@
 #include <FastLED.h>
 #include <RTCDue.h>
 
+// Next steps is to create a platformio project & port this over there
+// create some unit tests & multiple code files - use VSCode have great fun & create something special :) 
+
 FASTLED_USING_NAMESPACE
 
 // FastLED "100-lines-of-code" demo reel, showing just a few 
