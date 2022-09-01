@@ -46,6 +46,8 @@ CRGB leds3[NUM_LEDS];
 CRGB leds4[NUM_LEDS];
 CRGB leds5[NUM_LEDS];
 
+//CRGB* leds[] = { leds1, leds2, leds3, leds4, leds5 };
+
 #define BRIGHTNESS         255
 #define FRAMES_PER_SECOND  60
 
@@ -162,7 +164,7 @@ char* currentLoop = "SETUP";
 void printCurrentLoopOnce(char* loopName) {
   if (loopName != currentLoop) {
     Serial.println();
-    Serial.print("Current Loop: ");
+    Serial.print("Current Loop: "); 
     Serial.println(loopName);
     currentLoop = loopName;
   }
@@ -181,7 +183,10 @@ SimplePatternList eveningPatterns = {
   fillFadeInOriginal
 };
 
-SimplePatternList dayPatterns = {  
+SimplePatternList dayPatterns = { 
+//  slowFadeInAndOut, 
+//  stripSwitchFade, 
+//  fadeSingleStripIn,
   edgeToCenterBoom,
   centerToEdgeBoom,
   centerToEdgeFill, 
@@ -221,19 +226,26 @@ uint8_t blue = 160;
 uint8_t purple = 192;
 uint8_t pink = 224;
 
-  
+uint8_t START_SIGNAL = 0;
 void loop() { 
   /*  there seems to be a 24 second delay between minutes. Switching between day & night.
       13:16:24.006 -> Day Loop
       13:16:24.115 -> Evening Loop
   */
-  if ( 0 <= rtc.getMinutes() ) {
-    dayLoop();
-    printCurrentLoopOnce("Day Loop");
+  if (START_SIGNAL == 0) {
+    printCurrentPatternOnce("START_SIGNAL");
+    fill_solid(leds1, NUM_LEDS, CHSV(aqua, 255, 255));
+    FastLED.delay(3000);
+    fadeAllStripsToBlack();
+    START_SIGNAL = 1;
   }
-  else if ( 30 <= rtc.getMinutes() ) { // >= to try avoid the 24 second delay seen above
-    eveningLoop();
+  if (rtc.getMinutes() >= 0 && rtc.getMinutes() <= 30 ) {
+    printCurrentLoopOnce("Day Loop");
+    dayLoop();
+  }
+  else if ( rtc.getMinutes() >= 30 && rtc.getMinutes() <= 50) { // >= to try avoid the 24 second delay seen above
     printCurrentLoopOnce("Evening Loop");
+    eveningLoop();
   }
   else {
     printCurrentLoopOnce("Fading to black");
@@ -259,7 +271,7 @@ void eveningLoop() {
   EVERY_N_MILLISECONDS( 20 ) { 
     gHue++; 
   } // slowly cycle the "base color" through the rainbow
-  EVERY_N_SECONDS( 4 ) { nextEveningPattern(); } // change patterns periodically
+  EVERY_N_SECONDS( 17 ) { nextEveningPattern(); } // change patterns periodically
 }
 
 // only difference here is that it is faster
@@ -272,7 +284,7 @@ void dayLoop() {
   FastLED.delay(1000/FRAMES_PER_SECOND); 
 
   // do some periodic updates
-  EVERY_N_MILLISECONDS( 100 ) { 
+  EVERY_N_MILLISECONDS( 50 ) { 
     gHue++; 
   } // slowly cycle the "base color" through the rainbow
   EVERY_N_SECONDS( 17 ) // make this a variable & give it a range to increase the randomness
@@ -605,6 +617,33 @@ void lighteningBoltsInc() {
   }
 }
 
+void slowFadeInAndOut() {
+  printCurrentPatternOnce("slowFadeInAndOut");
+  int colourOne = random8(0,255);
+  int colourTwo = random8(0,255);
+  for (uint8_t i = 0; i < 255; i++){
+    fill_solid(leds1, NUM_LEDS, CHSV(colourOne, random8(175, 255), i));
+    fill_solid(leds2, NUM_LEDS, CHSV(colourTwo, random8(175, 255), i));
+    fill_solid(leds3, NUM_LEDS, CHSV(colourOne, random8(175, 255), i));
+    fill_solid(leds4, NUM_LEDS, CHSV(colourTwo, random8(175, 255), i));
+    fill_solid(leds5, NUM_LEDS, CHSV(colourTwo, random8(175, 255), i));
+    FastLED.delay(random8(35, 90));
+  }
+
+  for (uint8_t i = 0; i< 255; i++) {
+    fadeAllStripsBy(i);
+    FastLED.delay(random8(35, 90));
+  }
+}
+
+void fadeAllStripsBy(uint8_t fadeFactor) {
+  fadeToBlackBy(leds1, NUM_LEDS, fadeFactor);
+  fadeToBlackBy(leds2, NUM_LEDS, fadeFactor);
+  fadeToBlackBy(leds3, NUM_LEDS, fadeFactor);
+  fadeToBlackBy(leds4, NUM_LEDS, fadeFactor);
+  fadeToBlackBy(leds5, NUM_LEDS, fadeFactor);
+}
+
 
 
 // use bseconds to get current time since boot
@@ -862,6 +901,44 @@ void stripUpStripDown() {
   }
 }
 
+void fadeSingleStripIn() {
+  printCurrentPatternOnce("fadeSingleStripIn");
+  for ( uint8_t i = 0; i < 6; i++ ) {
+    
+    for ( uint8_t y = 0; y < 255; y++ ) {
+      if ( i == 0 ) {
+        fill_solid(leds1, NUM_LEDS, CHSV(random8(255), random8(175, 255), y));
+        FastLED.delay(random8(50, 150)); 
+      } // i < 6
+      else if (i == 1) {
+        fill_solid(leds2, NUM_LEDS, CHSV(random8(255), random8(175, 255), y));
+        fadeToBlackBy(leds1, NUM_LEDS, y);
+        FastLED.delay(random8(50, 150)); 
+      }
+      else if (i == 2) {
+        fill_solid(leds3, NUM_LEDS, CHSV(random8(255), random8(175, 255), y));
+        fadeToBlackBy(leds2, NUM_LEDS, y);
+        FastLED.delay(random8(50, 150)); 
+      }
+      else if (i == 3) {
+        fill_solid(leds4, NUM_LEDS, CHSV(random8(255), random8(175, 255), y));
+        fadeToBlackBy(leds3, NUM_LEDS, y);
+        FastLED.delay(random8(50, 150)); 
+      }
+      else if (i == 4) {
+        fill_solid(leds5, NUM_LEDS, CHSV(random8(255), random8(175, 255), y));
+        fadeToBlackBy(leds4, NUM_LEDS, y);
+        FastLED.delay(random8(50, 150));
+      }
+      else {
+        fadeToBlackBy(leds5, NUM_LEDS, y);
+        FastLED.delay(random8(50, 150));
+      }
+      
+    }
+  }
+}
+
 // a pattern that switches between full solids of colour & full solids of black
 void stripSwitch() {
   fadeAllStripsToBlack();
@@ -890,6 +967,36 @@ void stripSwitch() {
   } // for
 }
 
+// a pattern that switches between full solids of colour & full solids of black
+void stripSwitchFade() {
+  fadeAllStripsToBlack();
+  printCurrentPatternOnce("stripSwitchFade");
+  
+  for (uint8_t i = 0; i < 300; i++ ) {
+
+    if ( i % 2 == 0 ) {
+      for ( uint8_t y = 0; y < 255; y++) {
+        fill_solid(leds1, NUM_LEDS, CHSV(random8(64, 255), random8(128, 255), y));
+        fill_solid(leds2, NUM_LEDS, CHSV(random8(64, 255), random8(128, 255), y));
+        fadeToBlackBy(leds3, NUM_LEDS, y);
+        fadeToBlackBy(leds4, NUM_LEDS, y);
+        fill_solid(leds5, NUM_LEDS, CHSV(random8(64, 255), random8(128, 255), y)); // strip at the banisters
+        FastLED.delay(75);
+      }      
+    }
+    else {
+      for (uint8_t y = 0; y < 255; y++ ) {
+        fadeToBlackBy(leds1, NUM_LEDS, y);        
+        fadeToBlackBy(leds2, NUM_LEDS, y);
+        fill_solid(leds3, NUM_LEDS, CHSV(random8(64, 255), random8(128, 255), y));
+        fill_solid(leds4, NUM_LEDS, CHSV(random8(64, 255), random8(128, 255), y));
+        fill_solid(leds5, NUM_LEDS, CRGB::Black);
+        FastLED.delay(75);
+      }
+    }
+  } // for
+}
+
 void edgeToCenterBoom() { // a nice overlapping effect whould be lovely nice & quick
   fadeAllStripsToBlack();
   printCurrentPatternOnce("edgeToCenterBoom");
@@ -900,9 +1007,33 @@ void edgeToCenterBoom() { // a nice overlapping effect whould be lovely nice & q
       leds1[i] = CHSV(aqua, 255, random8(200, 255));
       leds1[NUM_LEDS - i] = CHSV(pink, 255, random8(200, 255)); 
 
+      leds2[i] = CHSV(pink, 255, random8(200, 255));
+      leds2[NUM_LEDS - i] = CHSV(aqua, 255, random8(200, 255)); 
+
+      leds3[i] = CHSV(pink, 255, random8(200, 255));
+      leds3[NUM_LEDS - i] = CHSV(aqua, 255, random8(200, 255)); 
+
+      leds4[i] = CHSV(pink, 255, random8(200, 255));
+      leds4[NUM_LEDS - i] = CHSV(aqua, 255, random8(200, 255)); 
+
+      leds5[i] = CHSV(aqua, 255, random8(200, 255));
+      leds5[NUM_LEDS - i] = CHSV(pink, 255, random8(200, 255)); 
+
       if ( i > 1 ) {
         leds1[i-1] = CHSV(aqua, 255, random8(200, 255));
         leds1[(NUM_LEDS - i) + 1] = CHSV(pink, 255, random8(200, 255)); 
+
+        leds2[i-1] = CHSV(aqua, 255, random8(200, 255));
+        leds2[(NUM_LEDS - i) + 1] = CHSV(pink, 255, random8(200, 255)); 
+
+        leds3[i-1] = CHSV(pink, 255, random8(200, 255));
+        leds3[(NUM_LEDS - i) + 1] = CHSV(aqua, 255, random8(200, 255)); 
+
+        leds4[i-1] = CHSV(pink, 255, random8(200, 255));
+        leds4[(NUM_LEDS - i) + 1] = CHSV(aqua, 255, random8(200, 255)); 
+
+        leds5[i-1] = CHSV(aqua, 255, random8(200, 255));
+        leds5[(NUM_LEDS - i) + 1] = CHSV(pink, 255, random8(200, 255)); 
       }
       else {
         leds1[i - 2] = CHSV(aqua, 255, random8(200, 255)); 
@@ -910,6 +1041,30 @@ void edgeToCenterBoom() { // a nice overlapping effect whould be lovely nice & q
         
         leds1[(NUM_LEDS - i) + 2] = CHSV(pink, 255, random8(200, 255));
         leds1[(NUM_LEDS - i) + 3] = CRGB::Black;
+
+        leds2[i - 2] = CHSV(aqua, 255, random8(200, 255)); 
+        leds2[i - 3] = CRGB::Black;
+        
+        leds2[(NUM_LEDS - i) + 2] = CHSV(pink, 255, random8(200, 255));
+        leds2[(NUM_LEDS - i) + 3] = CRGB::Black;
+
+        leds3[i - 2] = CHSV(aqua, 255, random8(200, 255)); 
+        leds3[i - 3] = CRGB::Black;
+        
+        leds3[(NUM_LEDS - i) + 2] = CHSV(pink, 255, random8(200, 255));
+        leds3[(NUM_LEDS - i) + 3] = CRGB::Black;
+
+        leds4[i - 2] = CHSV(aqua, 255, random8(200, 255)); 
+        leds4[i - 3] = CRGB::Black;
+        
+        leds4[(NUM_LEDS - i) + 2] = CHSV(pink, 255, random8(200, 255));
+        leds4[(NUM_LEDS - i) + 3] = CRGB::Black;
+
+        leds5[i - 2] = CHSV(aqua, 255, random8(200, 255)); 
+        leds5[i - 3] = CRGB::Black;
+        
+        leds5[(NUM_LEDS - i) + 2] = CHSV(pink, 255, random8(200, 255));
+        leds5[(NUM_LEDS - i) + 3] = CRGB::Black;
       }
 
       FastLED.delay(18);
@@ -936,21 +1091,38 @@ void centerToEdgeBoom() {
   for ( uint16_t i = 0; i < MID_STRIP; i++ ) {
     if (i <= NUM_LEDS) {
       leds1[MID_STRIP + i] = CHSV(blue, 255, random8(200, 255));
+      leds1[MID_STRIP - i] = CHSV(green, 255, random8(200, 255));
 
-      if ( i == 1 ) {
-        leds1[MID_STRIP + i] = CHSV(aqua, 255, random8(200, 255));
-        leds1[MID_STRIP - i] = CHSV(pink, 255, random8(200, 255)); 
-      }
-      else {
-        leds1[MID_STRIP - 2] = CHSV(aqua, 255, random8(200, 255)); 
-        leds1[MID_STRIP - 3] = CRGB::Black;
-        
-        leds2[MID_STRIP + 2] = CHSV(pink, 255, random8(200, 255));
-        leds2[MID_STRIP - 3] = CRGB::Black;
+      leds2[MID_STRIP + i] = CHSV(blue, 255, random8(200, 255));
+      leds2[MID_STRIP - i] = CHSV(green, 255, random8(200, 255));
+
+      leds3[MID_STRIP + i] = CHSV(blue, 255, random8(200, 255));
+      leds3[MID_STRIP - i] = CHSV(green, 255, random8(200, 255));
+
+      leds4[MID_STRIP + i] = CHSV(blue, 255, random8(200, 255));
+      leds4[MID_STRIP - i] = CHSV(green, 255, random8(200, 255));
+
+      leds5[MID_STRIP + i] = CHSV(blue, 255, random8(200, 255));
+      leds5[MID_STRIP - i] = CHSV(green, 255, random8(200, 255));
+
+      if ( i > 2 ) {
+        leds1[(MID_STRIP + i) -3] = CRGB::Black;
+        leds1[(MID_STRIP - i) + 3] = CRGB::Black; 
+
+        leds2[(MID_STRIP + i) -3] = CRGB::Black;
+        leds2[(MID_STRIP - i) + 3] = CRGB::Black; 
+
+        leds3[(MID_STRIP + i) -3] = CRGB::Black;
+        leds3[(MID_STRIP - i) + 3] = CRGB::Black; 
+
+        leds4[(MID_STRIP + i) -3] = CRGB::Black;
+        leds4[(MID_STRIP - i) + 3] = CRGB::Black; 
+
+        leds5[(MID_STRIP + i) -3] = CRGB::Black;
+        leds5[(MID_STRIP - i) + 3] = CRGB::Black; 
       }
 
       FastLED.delay(45);
-//      break;
     } // midpoint boom - revisit this & fill the strip out from center again
   }
 
