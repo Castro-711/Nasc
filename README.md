@@ -13,3 +13,8 @@ To make the development process faster I am adding a wifi extender & a raspberry
 | Mobile          	| 533.41mb Down              	| 167.61mb Down              	|                    	|   	|
 | Laptop          	| 509.78mb Down / 50.84mb Up 	| 222.24mb Down / 38.56mb Up 	|                    	|   	|
 |                 	|                            	|                            	|                    	|   	|
+
+## Remote Development
+On the 4th of August 2023, I successfully deployed code using **platformio** via my **pi-top**. I needed to use a custom command in the platform.ini file to remove the `false` which I think is **Windows** specific 🤷‍♂️  
+Anyways the main thing is I can now develop my patterns remotely. I confirmed by changing the `START_SIGNAL` colour from `aqua` to `yellow` - Dylan's favourite colour/word at the time.  
+
