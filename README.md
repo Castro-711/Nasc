@@ -18,6 +18,13 @@ To make the development process faster I am adding a wifi extender & a raspberry
 On the 4th of August 2023, I successfully deployed code using **platformio** via my **pi-top**. I needed to use a custom command in the platform.ini file to remove the `false` which I think is **Windows** specific 🤷‍♂️  
 Anyways the main thing is I can now develop my patterns remotely. I confirmed by changing the `START_SIGNAL` colour from `aqua` to `yellow` - Dylan's favourite colour/word at the time.  
 
+## Backed up images  
+I backed up the pi-top images, with the current working config in case the worst happens. I have saved them to proton drive.  
+```bash
+nasc-rpi-boot
+nasc-rpi-recovery
+```
+
 ## How to upload new code to the Arduino Due from the platformio on MacOS via the PiTop
 #### 1. Ensure that the pio remote agent is running on the rpi
 ```bash
