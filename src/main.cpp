@@ -62,7 +62,7 @@ void loop() {
     13:16:24.115 -> Evening Loop */
   if (START_SIGNAL == 0) {
     printCurrentPatternOnce("START_SIGNAL");
-    fill_solid(leds1, NUM_LEDS, CHSV(aqua, 255, 255));
+    fill_solid(leds1, NUM_LEDS, CHSV(yellow, 255, 255));
     FastLED.delay(3000);
     fadeAllStripsToBlack();
     START_SIGNAL = 1;
