@@ -26,7 +26,7 @@ nasc-rpi-recovery
 ```
 
 ## How to upload new code to the Arduino Due from the platformio on MacOS via the PiTop
-#### 1. Ensure that the pio remote agent is running on the Pi-Top
+### 1. Ensure that the pio remote agent is running on the Pi-Top
 ```bash
 ssh pi@<hostname>  
 systemcl status pio-remote ## double check this
@@ -66,7 +66,7 @@ It is very likely the session is already started
 [2]    37722 done       pio remote agent start --name nasc
 ```
 
-#### 2. Get the port via the device list on Mac
+### 2. Get the port via the device list on Mac
 ```bash
 ➜ pio remote device list
 2023-08-06 21:25:11 [info] Remote command received: device.list
@@ -86,7 +86,7 @@ Agent nasc
 ==========
 ```
 
-#### 3. Trigger the upload from Mac
+### 3. Trigger the upload from Mac
 ```bash 
 pio remote --agent pi-top run -e due -t upload -v --upload-port /dev/ttyACM1 # port retrieved in step 2
 ```
@@ -95,9 +95,24 @@ pio remote --agent pi-top run -e due -t upload -v --upload-port /dev/ttyACM1 # p
 pio remote --agent pi-top run -e due -t build -v --upload-port /dev/ttyACM1
 ```
 More issues related to bossac picking put the port...  
+**Check that bossac is finding the device on the port**  
+```bash
+pi@pi-top:~ $ bossac --port=/dev/ttyACM1 -U -i
+Device       : ATSAM3X8
+Version      : v1.1 Dec 15 2010 19:25:04
+Address      : 0x80000
+Pages        : 2048
+Page Size    : 256 bytes
+Total Size   : 512KB
+Planes       : 2
+Lock Regions : 32
+Locked       : none
+Security     : false
+Boot Flash   : false
+```
 I think a reboot of the Arduino solved it - **always use the pi-top agent**  (not sure exactly what solved this, will figure out in time)
 
-#### 4. Reset the board as that step had to be removed form the bossac command on the Pi-Top
+### 4. Reset the board as that flag had to be removed to form the custom bossac command in platform.ini to work on the Pi-Top
 ```bash
-bossac --port=<port-name> -i -R ## something like that - double check
+pi@pi-top:~ $ bossac -R --port=/dev/ttyACM1
 ```
