@@ -26,6 +26,26 @@ nasc-rpi-recovery
 ```
 
 ## How to upload new code to the Arduino Due from the platformio on MacOS via the PiTop
+
+## TLDR;
+On the **Pi-Top**  
+```bash
+# set the baud rate for the device 
+pi@pi-top:~ $ stty -F /dev/ttyACM0 speed 1200 cs8 -cstopb -parenb
+# verify that it is recognized by bossac
+pi@pi-top:~ $ bossac --port=/dev/ttyACM0 -i
+```
+On the **Mac**  
+```bash
+# upload the code 
+➜ pio remote --agent pi-top run -e due -t upload -v --upload-port /dev/ttyACM0
+```
+Back on the **Pi-Top**
+```bash
+# reset the due
+pi@pi-top:~ $ bossac --port=/dev/ttyACM0 -R
+```
+
 ### 1. Ensure that the pio remote agent is running on the Pi-Top
 ```bash
 ssh pi@<hostname>  
