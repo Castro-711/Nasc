@@ -89,12 +89,11 @@ Agent nasc
 ### 3. Trigger the upload from Mac
 ```bash 
 pio remote --agent pi-top run -e due -t upload -v --upload-port /dev/ttyACM1 # port retrieved in step 2
-```
+```  
 **NOTE**: if this fail's build run the `build` target & retry the above
 ```bash
 pio remote --agent pi-top run -e due -t build -v --upload-port /dev/ttyACM1
-```
-More issues related to bossac picking put the port...  
+```  
 **Check that bossac is finding the device on the port**  
 ```bash
 pi@pi-top:~ $ bossac --port=/dev/ttyACM1 -U -i
@@ -110,7 +109,12 @@ Locked       : none
 Security     : false
 Boot Flash   : false
 ```
-I think a reboot of the Arduino solved it - **always use the pi-top agent**  (not sure exactly what solved this, will figure out in time)
+If it is not finding your board it is likely related to the **baud rate**, when the **due** is unplugged it defaults back to `115200`.  
+On the **Pi-Top** set it to `1200` again so **bossac** can pick it up credit this [arduino forum post](https://forum.arduino.cc/t/solved-uploads-fail-from-debian-to-due-no-device-found-on-ttyacm0/145106/7)
+```bash
+pi@pi-top:~ $ stty -F /dev/ttyACM0 speed 1200 cs8 -cstopb -parenb
+```
+Confirm it worked by rerunning the command above.   
 
 ### 4. Reset the board as that flag had to be removed to form the custom bossac command in platform.ini to work on the Pi-Top
 ```bash
