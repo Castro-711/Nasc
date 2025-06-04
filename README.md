@@ -14,6 +14,18 @@ To make the development process faster I am adding a wifi extender & a raspberry
 | Laptop          	| 509.78mb Down / 50.84mb Up 	| 222.24mb Down / 38.56mb Up 	|                    	|   	|
 |                 	|                            	|                            	|                    	|   	|
 
+## Arklow setup
+On the 4th of June 2025, I have got the project back up & running on my desktop machine. I have also connected the 12 transformer to the supply to get the beautiful colours. 
+
+### How to ?
+I have made some changes & can now successfully build & upload the project on my desktop machine. 
+
+#### How to monitor
+There are other options that can be filtered on but I have not yet explored them. 
+```bash
+$ pio device monitor -f printable -b 115200
+```
+
 ## Remote Development
 On the 4th of August 2023, I successfully deployed code using **platformio** via my **pi-top**. I needed to use a custom command in the platform.ini file to remove the `false` which I think is **Windows** specific 🤷‍♂️  
 Anyways the main thing is I can now develop my patterns remotely. I confirmed by changing the `START_SIGNAL` colour from `aqua` to `yellow` - Dylan's favourite colour/word at the time.  
